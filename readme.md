@@ -70,5 +70,5 @@ It is possible to request allready logged messages from the server. Send a GET r
 Upcomming features
 
 * Get messages by date
-* Searching?
+* Broadcast messages via rabbit mq
 * Bug fixes
