@@ -1,0 +1,10 @@
+{
+	"Console": {
+		"colorize":	true,
+		"timestamp":	true,
+		"level":	"verbose",
+		"json":	false,
+		"handleExceptions":	true,
+        "humanReadableUnhandledException": true
+	}
+}

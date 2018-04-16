@@ -1,0 +1,23 @@
+{
+  "name": "larvitlog",
+  "version": "0.1.0",
+  "description": "a socket message server",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape"
+  },
+  "author": "klas",
+  "license": "ISC",
+  "dependencies": {
+    "async": "^2.6.0",
+    "argparse": "^1.0.10",
+    "check-object-key": "^0.1.2",
+    "larvitutils": "^1.1.2",
+    "larvitbase-api": "^0.2.2",
+    "moment": "^2.22.0",
+    "socket.io": "^2.1.0",
+    "winston": "^2.4.1",
+    "winston-daily-rotate-file": "^3.0.1",
+    "winston-elasticsearch": "^0.5.8"
+  }
+}
