@@ -35,6 +35,7 @@ function broadcastMessage(req, res, cb) {
 	message.message	= req.jsonBody.message;
 	message.metadata	= req.jsonBody.metadata || {};
 	message.emitType	= req.jsonBody.emitType || 'message';
+	message.timestamp	= new Date();
 
 	handler.handleMessage(message, cb);
 }
