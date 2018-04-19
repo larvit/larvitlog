@@ -10,29 +10,35 @@ const topLogPrefix	= require('winston').appLogPrefix + __filename + ' - ',
 checkKey({
 	'obj':	exports,
 	'objectKey':	'options',
-	'default':	null,
+	'default':	null
 }, function (err, warning) {
 	if (warning) log.warn(logPrefix + warning);
 
-	if ( ! exports.options) {
-		throw new Error('Options not set!');
-	}
-
 	if ( ! exports.options.io) {
-		throw new Error('Io not present in options');
+		const err = new Error('Io not present in options');
+		log.error(logPrefix + err.message);
+		throw err;
 	}
 
 	if ( ! exports.options.fileStoragePath) {
-		throw new Error('File path not present in options');
+		const err = new Error('File path not present in options');
+		log.error(logPrefix + err.message);
+		throw err;
+	}
+
+	if ( ! exports.options.intercom) {
+		const err = new Error('Intercom not set');
+		log.error(logPrefix + err.message);
+		throw err;
 	}
 
 	exports.options.io.on('connection', function () {
-		log.verbose(topLogPrefix + 'Got a new connection!');
+		log.verbose(logPrefix + 'Got a new connection!');
 	});
 });
 
 function handleMessage(msg, cb) {
-	const logPrefix	= topLogPrefix + 'SaveMessageToFile() - ',
+	const logPrefix	= topLogPrefix + 'handleMessage() - ',
 		tasks	= [],
 		filename	= 'messages_' + moment().format('YYYY-MM-DD') + '.txt';
 
@@ -50,8 +56,19 @@ function handleMessage(msg, cb) {
 	});
 
 	tasks.push(function (cb) {
-		exports.options.io.sockets.emit('message', msg);
+		exports.options.io.sockets.emit(msg.emitType || 'message', msg);
 		cb();
+	});
+
+	tasks.push(function (cb) {
+		const sendObj = {
+			'action': msg.emitType || 'message',
+			'params': {
+				'message': msg
+			}
+		};
+
+		exports.options.intercom.send(sendObj, {'exchange': exports.exchangeName}, cb);
 	});
 
 	async.series(tasks, cb);
@@ -59,7 +76,7 @@ function handleMessage(msg, cb) {
 
 function formatMessage(msg) {
 	return moment(msg.date).format('YYYY-MM-DD HH:mm:ss.SSSS') + ' - ' + msg.sentBy + ' - ' + msg.level + ': ' + msg.message;
-}
+};
 
 function getData(options, cb) {
 	const logPrefix = topLogPrefix + 'getData() - ',
@@ -85,8 +102,9 @@ function getData(options, cb) {
 	} else {
 		cb(null, result);
 	}
-}
+};
 
+exports.exchangeName	= 'larvitlog';
 exports.handleMessage	= handleMessage;
 exports.formatMessage	= formatMessage;
 exports.getData	= getData;

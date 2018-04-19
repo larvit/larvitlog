@@ -1,7 +1,7 @@
 'use strict';
 
 const	topLogPrefix	= require('winston').appLogPrefix + __filename + ' - ',
-	handler	= require(__dirname + '/../../models/messageHandler.js'),
+	messageHandler	= require(__dirname + '/../../models/messageHandler.js'),
 	log	= require('winston');
 
 function getMessages(req, res, cb) {
@@ -18,7 +18,7 @@ function getMessages(req, res, cb) {
 		return cb();
 	}
 
-	handler.getData({}, function (err, result) {
+	messageHandler.getData({}, function (err, result) {
 		res.data = result;
 		cb(err);
 	});

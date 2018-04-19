@@ -3,6 +3,7 @@
 const	topLogPrefix	= 'larvitlog: ' + __filename + ' - ',
 	messageHandler	= require(__dirname + '/models/messageHandler.js'),
 	ArgParser	= require('argparse').ArgumentParser,
+	Intercom	= require('larvitamintercom'),
 	async	= require('async'),
 	App	= require('larvitbase-api'),
 	log	= require('winston'),
@@ -77,6 +78,14 @@ Logger.prototype.start = function (cb) {
 			'lBaseOptions': {'httpOptions': that.options.lBaseOptions.port || 8001}, // Listening port,
 		});
 
+		that.app.middleware.splice(1, 0, function (req, res, cb) {
+			if (req.url.startsWith('socket.io')) {
+				console.log('handshake!');
+			} else {
+				cb();
+			}
+		});
+
 		// Parse all incoming data as JSON
 		that.app.middleware.splice(1, 0, function (req, res, cb) {
 
@@ -111,11 +120,11 @@ Logger.prototype.start = function (cb) {
 	// setup sockets
 	tasks.push(function (cb) {
 		that.io = require('socket.io')(that.app.lBase.httpServer);
-		that.io.set('transports', ['websocket']);
-
+		that.io.set('transports', ['polling', 'websocket']);
 		messageHandler.options = {
 			'io': that.io,
-			'fileStoragePath': that.options.app.fileStoragePath
+			'fileStoragePath': that.options.app.fileStoragePath,
+			'intercom':	new Intercom(that.options.amqp && that.options.amqp.default ? that.options.amqp.default : 'loopback interface')
 		};
 
 		cb();
@@ -158,6 +167,7 @@ if (require.main === module) {
 			'lBaseOptions':	fs.existsSync(cd + '/server.json') ? require(cd + '/server.json') : null,
 			'app':	fs.existsSync(cd + '/app.json') ? require(cd + '/app.json') : null,
 			'log':	fs.existsSync(cd + '/log.json') ? require(cd + '/log.json') : null,
+			'amqp':	fs.existsSync(cd + '/amqp.json') ? require(cd + '/amqp.json') : null,
 		};
 	}
 

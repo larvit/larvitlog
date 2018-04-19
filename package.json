@@ -14,6 +14,7 @@
     "check-object-key": "^0.1.2",
     "larvitutils": "^1.1.2",
     "larvitbase-api": "^0.2.2",
+    "larvitamintercom": "^0.2.5",
     "moment": "^2.22.0",
     "socket.io": "^2.1.0",
     "winston": "^2.4.1",
