@@ -12,28 +12,28 @@ checkKey({
 	'objectKey':	'options',
 	'default':	null
 }, function (err, warning) {
-	if (warning) log.warn(logPrefix + warning);
+	if (warning) log.warn(topLogPrefix + warning);
 
 	if ( ! exports.options.io) {
 		const err = new Error('Io not present in options');
-		log.error(logPrefix + err.message);
+		log.error(topLogPrefix + err.message);
 		throw err;
 	}
 
 	if ( ! exports.options.fileStoragePath) {
 		const err = new Error('File path not present in options');
-		log.error(logPrefix + err.message);
+		log.error(topLogPrefix + err.message);
 		throw err;
 	}
 
 	if ( ! exports.options.intercom) {
 		const err = new Error('Intercom not set');
-		log.error(logPrefix + err.message);
+		log.error(topLogPrefix + err.message);
 		throw err;
 	}
 
 	exports.options.io.on('connection', function () {
-		log.verbose(logPrefix + 'Got a new connection!');
+		log.verbose(topLogPrefix + 'Got a new connection!');
 	});
 });
 
