@@ -124,7 +124,10 @@ Logger.prototype.start = function (cb) {
 		messageHandler.options = {
 			'io': that.io,
 			'fileStoragePath': that.options.app.fileStoragePath,
-			'intercom':	new Intercom(that.options.amqp && that.options.amqp.default ? that.options.amqp.default : 'loopback interface')
+			'intercom':	new Intercom({
+				'log': log,
+				'conStr': that.options.amqp && that.options.amqp.default ? that.options.amqp.default : 'loopback interface'
+			})
 		};
 
 		cb();
