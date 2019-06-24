@@ -1,108 +1,67 @@
 'use strict';
 
-const	topLogPrefix	= 'larvitlog: ' + __filename + ' - ',
-	messageHandler	= require(__dirname + '/models/messageHandler.js'),
-	ArgParser	= require('argparse').ArgumentParser,
-	Intercom	= require('larvitamintercom'),
-	async	= require('async'),
-	App	= require('larvitbase-api'),
-	log	= require('winston'),
-	fs	= require('fs'),
-	parser = new ArgParser({
-		'addHelp':	true, // -h was reserved for help so had to disable :/
-		'description':	'larvitmessages example'
-	});
+const topLogPrefix = 'larvitlog: ' + __filename + ' - ';
+const MessageHandler = require(__dirname + '/models/messageHandler.js');
+const LUtils = require('larvitutils');
+const App = require('larvitbase-api');
+const fs = require('fs');
 
-parser.addArgument(['-cd', '--configDir'], {'help': '/path/to/dir/with/config/files'});
-parser.addArgument(['-fp', '--filePath'], {'help': '/path/to/files/are/stored'});
-parser.addArgument(['-hp', '--httpPort'], {'help': '8080'});
+const lUtils = new LUtils();
 
-// https://github.com/uxitten/polyfill/blob/master/string.polyfill.js
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/padStart
-if ( ! String.prototype.padStart) {
-	String.prototype.padStart = function padStart(targetLength, padString) {
-		targetLength	= targetLength >> 0; // Truncate if number or convert non-number to 0;
-		padString	= String((typeof padString !== 'undefined' ? padString : ' '));
-		if (this.length > targetLength) {
-			return String(this);
-		} else {
-			targetLength	= targetLength - this.length;
-			if (targetLength > padString.length) {
-				padString += padString.repeat(targetLength / padString.length); //append to original to ensure we are longer than needed
-			}
-			return padString.slice(0, targetLength) + String(this);
+class Logger {
+	constructor(options) {
+		options = options || {};
+		options.log = options.log || new lUtils.Log();
+		this.log = options.log;
+
+		if (!options.fileStoragePath) {
+			const err = new Error('File storage path not specified');
+			this.log.warn(topLogPrefix + err.message);
+
+			throw err;
 		}
-	};
-}
 
-function Logger(options) {
-	const	that	= this;
+		if (!options.intercom) {
+			const err = new Error('Intercom not specified');
+			this.log.warn(topLogPrefix + err.message);
 
-	that.options	= options;
+			throw err;
+		}
 
-	if ( ! that.options)	that.options	= {};
-};
-
-Logger.prototype.start = function (cb) {
-	const	logPrefix	= topLogPrefix + 'Logger.prototype.start() - ',
-		that	= this,
-		tasks	= [];
-
-	if ( ! cb) cb = function () {};
-
-	if ( ! that.options.app.fileStoragePath) {
-		const	err	= new Error('File storage path not specified');
-		log.warn(logPrefix + err.message);
-		return cb(err);
+		this.options = options;
 	}
 
-	if ( ! fs.existsSync(that.options.app.fileStoragePath)) {
-		tasks.push(function (cb) {
-			fs.mkdir(that.options.app.fileStoragePath, function (err) {
-				let e = null;
+	async start() {
+		const logPrefix = topLogPrefix + 'Logger.prototype.start() - ';
 
-				if (err) {
-					e	= new Error('Failed to create directory "' + that.options.app.fileStoragePath + '": ' + err.message);
-					log.warn(logPrefix + e.message);
-				}
+		if (!fs.existsSync(this.options.fileStoragePath)) {
+			fs.mkdirSync(this.options.fileStoragePath);
+		}
 
-				return cb(e);
-			});
-		});
-	}
+		this.log.info(logPrefix + '===--- Larvitlog starting ---===');
 
-	tasks.push(function (cb) {
-		log.info(logPrefix + '===--- Larvitlog starting ---===');
-
-		that.app = new App({
-			'lBaseOptions': {'httpOptions': that.options.lBaseOptions.port || 8001}, // Listening port,
-		});
-
-		that.app.middleware.splice(1, 0, function (req, res, cb) {
-			if (req.url.startsWith('socket.io')) {
-				console.log('handshake!');
-			} else {
-				cb();
-			}
+		this.app = new App({
+			lBaseOptions: {httpOptions: this.options.port || 8001} // Listening port,
 		});
 
 		// Parse all incoming data as JSON
-		that.app.middleware.splice(1, 0, function (req, res, cb) {
-
+		this.app.middleware.splice(1, 0, (req, res, cb) => {
 			if (req.method.toUpperCase() !== 'GET' && req.rawBody === undefined) {
-				res.statusCode	= 400;
+				res.statusCode = 400;
 				res.end('"Bad Request\nNo body provided"');
-				log.verbose(logPrefix + 'No body provided.');
+				this.log.verbose(logPrefix + 'No body provided.');
+
 				return;
 			}
 
 			if (req.rawBody) {
 				try {
-					req.jsonBody	= JSON.parse(req.rawBody.toString());
+					req.jsonBody = JSON.parse(req.rawBody.toString());
 				} catch (err) {
-					res.statusCode	= 400;
+					res.statusCode = 400;
 					res.end('"Bad Request\nProvided body is not a valid JSON string"');
-					log.verbose(logPrefix + 'Could not JSON parse incoming body. err: ' + err.message);
+					this.log.verbose(logPrefix + 'Could not JSON parse incoming body. err: ' + err.message);
+
 					return;
 				}
 			}
@@ -110,120 +69,41 @@ Logger.prototype.start = function (cb) {
 			cb();
 		});
 
-		that.app.start(function (err) {
-			if (err) return cb(err);
-			log.info(logPrefix + 'Server up and running on port ' + that.app.lBase.httpServer.address().port);
+		await new Promise((resolve, reject) => {
+			this.app.start(err => {
+				if (err) return reject(err);
+				this.log.info(logPrefix + 'Server up and running on port ' + this.app.lBase.httpServer.address().port);
+				resolve();
+			});
+		});
+
+		// Setup sockets
+		this.io = require('socket.io')(this.app.lBase.httpServer);
+		this.io.set('transports', ['polling', 'websocket']);
+
+		// Create message handler
+		this.messageHandler = new MessageHandler({
+			io: this.io,
+			fileStoragePath: this.options.fileStoragePath,
+			intercom: this.options.intercom,
+			exchangeName: this.options.exchangeName
+		});
+
+		// Provide the messageHandler instance in the req
+		this.app.middleware.splice(1, 0, (req, res, cb) => {
+			req.messageHandler = this.messageHandler;
 			cb();
 		});
-	});
+	};
 
-	// setup sockets
-	tasks.push(function (cb) {
-		that.io = require('socket.io')(that.app.lBase.httpServer);
-		that.io.set('transports', ['polling', 'websocket']);
-		messageHandler.options = {
-			'io': that.io,
-			'fileStoragePath': that.options.app.fileStoragePath,
-			'intercom':	new Intercom({
-				'log': log,
-				'conStr': that.options.amqp && that.options.amqp.default ? that.options.amqp.default : 'loopback interface'
-			})
-		};
-
-		cb();
-	});
-
-	async.series(tasks, cb);
-};
-
-Logger.prototype.stop = function (cb) {
-	const that = this;
-	that.app.httpServer.close(cb);
-};
-
-exports = module.exports = Logger;
-
-// Running from console
-if (require.main === module) {
-	const	args	= parser.parseArgs();
-
-	let	options,
-		logger,
-		cd;
-
-	if (args.configDir) {
-		console.log('Looking for config files in "' + args.configDir + '"');
-		cd	= args.configDir;
-	} else if (args.filePath  && args.httpPort) {
-		options = {
-			'lBaseOptions': args.httpPort,
-			'app': args.filePath
-		};
-		console.log('Using configuration options from arguments');
-	} else {
-		cd	= __dirname + '/config';
-		console.log('Looking for config files in "' + cd + '"');
-	}
-
-	if (cd && fs.existsSync(cd)) {
-		options = {
-			'lBaseOptions':	fs.existsSync(cd + '/server.json') ? require(cd + '/server.json') : null,
-			'app':	fs.existsSync(cd + '/app.json') ? require(cd + '/app.json') : null,
-			'log':	fs.existsSync(cd + '/log.json') ? require(cd + '/log.json') : null,
-			'amqp':	fs.existsSync(cd + '/amqp.json') ? require(cd + '/amqp.json') : null,
-		};
-	}
-
-	// íf log not configured, try to look for log config file
-	if ( options && ! options.log) {
-		if (fs.existsSync(__dirname + '/config')) {
-			if (fs.existsSync(__dirname + '/config/log.json')) {
-
-			} else if (fs.existsSync(__dirname + '/config/log.json_example')) {
-
-			} else {
-				// no log config found, add config logging
-				options.log = {
-					'Console': {
-						'colorize':	true,
-						'timestamp':	true,
-						'level':	'verbose',
-						'json':	false,
-						'handleExceptions':	true,
-						'humanReadableUnhandledException': true
-					}
-				};
-			}
-		}
-	}
-
-	if (options && options.log) {
-		// Add support for daily rotate file and elasticsearch
-		log.transports.DailyRotateFile	= require('winston-daily-rotate-file');
-		log.transports.Elasticsearch	= require('winston-elasticsearch');
-
-		// Handle logging from config file
-		log.remove(log.transports.Console);
-		if (options.log !== undefined) {
-			for (const logName of Object.keys(options.log)) {
-				if (typeof options.log[logName] !== Array) {
-					options.log[logName] = [options.log[logName]];
-				}
-
-				for (let i = 0; options.log[logName][i] !== undefined; i ++) {
-					log.add(log.transports[logName], options.log[logName][i]);
-				}
-			}
-		}
-	}
-
-	if (options) {
-		logger	= new Logger(options);
-		logger.start(function (err) {
-			if (err) throw err;
+	async stop() {
+		await new Promise((resolve, reject) => {
+			this.app.lBase.httpServer.close(err => {
+				if (err) return reject(err);
+				resolve();
+			});
 		});
-	} else {
-		console.log('Invalid or insufficient parameters');
-		process.exit(1);
-	}
-}
+	};
+};
+
+module.exports = Logger;

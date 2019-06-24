@@ -1,8 +1,7 @@
 'use strict';
 
-const	topLogPrefix	= require('winston').appLogPrefix + __filename + ' - ',
-	messageHandler	= require(__dirname + '/../../models/messageHandler.js'),
-	log	= require('winston');
+const topLogPrefix = require('winston').appLogPrefix + __filename + ' - ';
+const log = require('winston');
 
 function getMessages(req, res, cb) {
 	const logPrefix = topLogPrefix + 'getMessages() - ';
@@ -13,15 +12,21 @@ function getMessages(req, res, cb) {
 
 	if (req.method.toUpperCase() !== 'GET') {
 		log.verbose(topLogPrefix + 'Got request with unallowed method: "' + req.method + '", query: "' + req.urlParsed.href + '"');
-		res.statusCode	= 405;
-		res.data	= {'message': '405 Method Not Allowed\nAllowed methods: GET'};
+		res.statusCode = 405;
+		res.data = {message: '405 Method Not Allowed\nAllowed methods: GET'};
+
 		return cb();
 	}
 
-	messageHandler.getData({}, function (err, result) {
-		res.data = result;
-		cb(err);
-	});
+	const limit = req.urlParsed.query.limit;
+	const levels = req.urlParsed.query.level;
+
+	req.messageHandler.getData({limit, levels})
+		.then(result => {
+			res.data = result;
+			cb();
+		})
+		.catch(cb);
 }
 
 exports = module.exports = getMessages;

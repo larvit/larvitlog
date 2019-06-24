@@ -1,3 +1,5 @@
 node_modules
 files
 config/*.json
+.vscode/
+test/testdata/**
