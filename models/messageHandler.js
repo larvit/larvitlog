@@ -119,11 +119,11 @@ class MessageHandler {
 								return true;
 							}
 						});
+
+					resolve(result);
 				})
 				.catch(err => {
 					log.warn(logPrefix + 'Error reading log file: "' + file + '", err: ' + err.message);
-				})
-				.finally(() => {
 					resolve(result);
 				});
 		});
