@@ -98,7 +98,7 @@ describe('Logger - get existing log messages', function () {
 		const response = JSON.parse(await request.get(`${httpUrl}/getMessages`));
 
 		// Check result
-		assert.equal(response.length, 3);
+		assert.equal(response.length, 4);
 		assert.deepStrictEqual(response[0], {
 			emitType: 'message',
 			message: 'An info message',
@@ -123,6 +123,14 @@ describe('Logger - get existing log messages', function () {
 			},
 			timestamp: '2019-06-06T07:07:15.131Z'
 		});
+		assert.deepStrictEqual(response[3], {
+			emitType: 'message',
+			message: 'A super warning message',
+			metadata: {
+				level: 'super-warn'
+			},
+			timestamp: '2019-06-06T07:07:16.131Z'
+		});
 	});
 
 	it('should get last messages with limit', async function () {
@@ -133,11 +141,11 @@ describe('Logger - get existing log messages', function () {
 		assert.equal(response.length, 1);
 		assert.deepStrictEqual(response[0], {
 			emitType: 'message',
-			message: 'An error message',
+			message: 'A super warning message',
 			metadata: {
-				level: 'error'
+				level: 'super-warn'
 			},
-			timestamp: '2019-06-06T07:07:15.131Z'
+			timestamp: '2019-06-06T07:07:16.131Z'
 		});
 	});
 
@@ -167,17 +175,17 @@ describe('Logger - get existing log messages', function () {
 
 	it('should get messages of only certain levels and with limit', async function () {
 		// Get warn and error messages
-		const response = JSON.parse(await request.get(`${httpUrl}/getMessages?level=warn&level=error&limit=1`));
+		const response = JSON.parse(await request.get(`${httpUrl}/getMessages?level=super-warn&limit=3`));
 
 		// Check result
 		assert.equal(response.length, 1);
 		assert.deepStrictEqual(response[0], {
 			emitType: 'message',
-			message: 'An error message',
+			message: 'A super warning message',
 			metadata: {
-				level: 'error'
+				level: 'super-warn'
 			},
-			timestamp: '2019-06-06T07:07:15.131Z'
+			timestamp: '2019-06-06T07:07:16.131Z'
 		});
 	});
 });

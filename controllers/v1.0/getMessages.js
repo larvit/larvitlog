@@ -19,7 +19,11 @@ function getMessages(req, res, cb) {
 	}
 
 	const limit = req.urlParsed.query.limit;
-	const levels = req.urlParsed.query.level;
+
+	let levels;
+	if (req.urlParsed.query.level) {
+		levels = Array.isArray(req.urlParsed.query.level) ? req.urlParsed.query.level : [req.urlParsed.query.level];
+	}
 
 	req.messageHandler.getData({limit, levels})
 		.then(result => {
