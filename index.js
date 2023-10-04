@@ -89,8 +89,9 @@ class Logger {
 			exchangeName: this.options.exchangeName
 		});
 
-		// Provide the messageHandler instance in the req
+		// Provide the messageHandler and log instance in the req
 		this.app.middleware.splice(1, 0, (req, res, cb) => {
+			req.log = this.log;
 			req.messageHandler = this.messageHandler;
 			cb();
 		});

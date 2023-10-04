@@ -1,9 +1,9 @@
 'use strict';
 
-const topLogPrefix = require('winston').appLogPrefix + __filename + ' - ';
-const log = require('winston');
+const topLogPrefix = __filename + ' - ';
 
 function getMessages(req, res, cb) {
+	const log = req.log;
 	const logPrefix = topLogPrefix + 'getMessages() - ';
 
 	res.setHeader('Access-Control-Allow-Origin', '*');
