@@ -83,6 +83,7 @@ class Logger {
 
 		// Create message handler
 		this.messageHandler = new MessageHandler({
+			log: this.log,
 			io: this.io,
 			fileStoragePath: this.options.fileStoragePath,
 			intercom: this.options.intercom,

@@ -1,15 +1,20 @@
 'use strict';
 
-const topLogPrefix = require('winston').appLogPrefix + __filename + ' - ';
+const topLogPrefix = __filename + ' - ';
 const readLastLines = require('read-last-lines');
 const moment = require('moment');
 const path = require('path');
-const log = require('winston');
 const fs = require('fs');
 
 class MessageHandler {
 	constructor(options) {
 		options = options || {};
+
+		if (!options.log) {
+			const err = new Error('Log not present in options');
+			log.error(topLogPrefix + err.message);
+			throw err;
+		}
 
 		if (!options.io) {
 			const err = new Error('Io not present in options');
@@ -29,13 +34,14 @@ class MessageHandler {
 			throw err;
 		}
 
+		this.log = options.log;
 		this.io = options.io;
 		this.fileStoragePath = options.fileStoragePath;
 		this.intercom = options.intercom;
 		this.exchangeName = options.exchangeName || 'larvitlog';
 
 		this.io.on('connection', () => {
-			log.verbose(topLogPrefix + 'Got a new connection!');
+			this.log.verbose(topLogPrefix + 'Got a new connection!');
 		});
 	}
 
@@ -44,7 +50,7 @@ class MessageHandler {
 			const logPrefix = topLogPrefix + 'handleMessage() - ';
 			const filename = 'messages_' + moment().format('YYYY-MM-DD') + '.txt';
 
-			log.debug(logPrefix + 'Saving and emitting message: ' + JSON.stringify(msg));
+			this.log.debug(logPrefix + 'Saving and emitting message: ' + JSON.stringify(msg));
 
 			if (!fs.existsSync(this.fileStoragePath + '/' + filename)) {
 				fs.writeFileSync(this.fileStoragePath + '/' + filename, '');
@@ -90,7 +96,7 @@ class MessageHandler {
 					});
 
 					lineReader.on('err', err => {
-						log.warn(logPrefix + 'Error reading file "' + file + ', err: ' + err.message);
+						this.log.warn(logPrefix + 'Error reading file "' + file + ', err: ' + err.message);
 					});
 
 					lineReader.on('close', () => {
@@ -123,7 +129,7 @@ class MessageHandler {
 					resolve(result);
 				})
 				.catch(err => {
-					log.warn(logPrefix + 'Error reading log file: "' + file + '", err: ' + err.message);
+					this.log.warn(logPrefix + 'Error reading log file: "' + file + '", err: ' + err.message);
 					resolve(result);
 				});
 		});
